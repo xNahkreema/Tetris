@@ -1,0 +1,116 @@
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+const COLS = 10;
+const ROWS = 20;
+const BLOCK = 30;
+
+const board = Array.from({ length: ROWS }, () =>
+  Array(COLS).fill(0)
+);
+
+const PIECES = [
+  [[1,1,1,1]],
+  [[1,1],[1,1]],
+  [[0,1,0],[1,1,1]],
+  [[0,1,1],[1,1,0]],
+  [[1,1,0],[0,1,1]],
+  [[1,0,0],[1,1,1]],
+  [[0,0,1],[1,1,1]]
+];
+
+let piece = spawn();
+
+function spawn() {
+  return {
+    shape: PIECES[Math.floor(Math.random()*7)],
+    x: 3,
+    y: 0
+  };
+}
+
+function drawBlock(x, y) {
+  ctx.fillStyle = "#0ff";
+  ctx.fillRect(x * BLOCK, y * BLOCK, BLOCK, BLOCK);
+  ctx.strokeRect(x * BLOCK, y * BLOCK, BLOCK, BLOCK);
+}
+
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  board.forEach((row, y) =>
+    row.forEach((val, x) => val && drawBlock(x, y))
+  );
+
+  piece.shape.forEach((row, y) =>
+    row.forEach((val, x) => {
+      if (val) drawBlock(piece.x + x, piece.y + y);
+    })
+  );
+}
+
+function valid(px, py, shape) {
+  return shape.every((row, y) =>
+    row.every((val, x) => {
+      if (!val) return true;
+      let nx = px + x;
+      let ny = py + y;
+      return (
+        nx >= 0 &&
+        nx < COLS &&
+        ny < ROWS &&
+        (!board[ny] || board[ny][nx] === 0)
+      );
+    })
+  );
+}
+
+function rotate() {
+  const rotated = piece.shape[0].map((_, i) =>
+    piece.shape.map(r => r[i]).reverse()
+  );
+  if (valid(piece.x, piece.y, rotated)) piece.shape = rotated;
+}
+
+function lock() {
+  piece.shape.forEach((row, y) =>
+    row.forEach((val, x) => {
+      if (val) board[piece.y + y][piece.x + x] = 1;
+    })
+  );
+}
+
+function clearLines() {
+  for (let y = ROWS - 1; y >= 0; y--) {
+    if (board[y].every(v => v)) {
+      board.splice(y, 1);
+      board.unshift(Array(COLS).fill(0));
+    }
+  }
+}
+
+function drop() {
+  if (valid(piece.x, piece.y + 1, piece.shape)) {
+    piece.y++;
+  } else {
+    lock();
+    clearLines();
+    piece = spawn();
+  }
+}
+
+document.getElementById("left").onclick = () => {
+  if (valid(piece.x - 1, piece.y, piece.shape)) piece.x--;
+};
+
+document.getElementById("right").onclick = () => {
+  if (valid(piece.x + 1, piece.y, piece.shape)) piece.x++;
+};
+
+document.getElementById("down").onclick = drop;
+document.getElementById("rotate").onclick = rotate;
+
+setInterval(() => {
+  drop();
+  draw();
+}, 500);
